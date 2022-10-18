@@ -67,20 +67,27 @@ impl eframe::App for MyApp {
             })
         });
         egui::SidePanel::left("lp").show(ctx,|ui| {
-            ui.horizontal(|ui|{
-                self.run = ui.button("RUN").clicked();
-                self.run_all = ui.button("RUN ALL").clicked();
-            });
-            ui.collapsing("Drones",|ui|{
-                for (idx, drone) in self.drones.iter().enumerate() {
-                    ui.selectable_value(&mut self.drone_idx, idx, format!("({}) {}",idx,drone));
-                }
+            egui::ScrollArea::vertical().always_show_scroll(true).show(ui,|ui|{
+                ui.horizontal(|ui|{
+                    self.run = ui.button("RUN").clicked();
+                    self.run_all = ui.button("RUN ALL").clicked();
+                });
+                ui.collapsing("Drones",|ui|{
+                    for (idx, drone) in self.drones.iter().enumerate() {
+                        ui.horizontal(|ui|{
+                            ui.label(idx.to_string());
+                            ui.selectable_value(&mut self.drone_idx, idx, drone);
+                        });
+                    }
+                });
             });    
         });
         egui::CentralPanel::default().show(ctx,|ui|{
-            let txb = egui::TextEdit::multiline(&mut self.code)
-                .code_editor();
-            ui.add_sized(ui.available_size(), txb);
+            egui::ScrollArea::vertical().show(ui, |ui|{
+                let txb = egui::TextEdit::multiline(&mut self.code)
+                    .code_editor();
+                ui.add_sized(ui.available_size(), txb);
+            });
         });
         if self.run_all {
             println!("running:\n{}\non: all",self.code);

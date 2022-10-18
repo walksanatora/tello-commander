@@ -1,8 +1,8 @@
 #![allow(dead_code,clippy::redundant_field_names)]
 
-use std::{sync::{Arc,Mutex, atomic::{AtomicBool, AtomicUsize, Ordering}}, collections::VecDeque, time::Duration};
+use std::{sync::{Arc, atomic::{AtomicBool, AtomicUsize, Ordering}}, collections::VecDeque, time::Duration};
 
-use tokio::{net::UdpSocket, task::JoinHandle};
+use tokio::{net::UdpSocket, task::JoinHandle, sync::Mutex};
 
 pub const ACKED: &[&str] = &[];
 
@@ -36,10 +36,8 @@ impl Drone {
             {
                 let result = sck.recv_from(&mut buffer).await;
                 if let Ok((size,_)) = result {
-                let response = std::str::from_utf8(&buffer[..size])
-                        .unwrap_or_default()
-                        .trim();
-					*rsp.lock().unwrap() = response.to_string();
+                let response = std::str::from_utf8(&buffer[..size]).unwrap().trim();
+					*rsp.lock().await = response.to_string();
                     ack.store(true, Ordering::SeqCst)
                 }
             }
@@ -48,13 +46,14 @@ impl Drone {
 
 		let sck = udp_socket.clone();
 		let queue = command_queue.clone();
+		let address = addr.to_string();
 		let send_thread = tokio::spawn(async move {
             loop {
 				{
-					let mut uqueue = queue.lock().unwrap();
+					let mut uqueue = queue.lock().await;
 					if !uqueue.is_empty() {
 						let command = uqueue.pop_front().unwrap();
-						sck.send_to(command.cmd.as_bytes(), addr).await;
+						sck.send_to(command.cmd.as_bytes(), address.clone()).await;
 					}
 				}
 				std::thread::sleep(Duration::from_millis(20));
@@ -71,12 +70,12 @@ impl Drone {
 			send_thread: send_thread
 		}
 	}
-	fn add_command(self,cmd: SdkCommand) {
+	async fn add_command(self,cmd: SdkCommand) {
 		if cmd.locking {
 			let t = self.block_counter.load(Ordering::Relaxed);
 			self.block_counter.store(t+1,Ordering::Relaxed);
 		}
-		let mut queu = self.queue.lock().unwrap();
+		let mut queu = self.queue.lock().await;
 		queu.push_back(cmd);
 	}
 }
