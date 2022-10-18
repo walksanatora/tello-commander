@@ -1,0 +1,8 @@
+command
+takeoff
+delay 5
+land
+delay 10
+takeoff
+delay 7
+land
