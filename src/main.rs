@@ -23,7 +23,7 @@ struct MyApp {
     run: bool, // whether or not to run the program on the specified drone
     run_all: bool, // whether or not to run the program on all drones
     pass_errors: bool, // whether errors should be passed or crashed
-    drones: Vec<String>, // a list of drones TODO: make it be a Drone object
+    drones: Vec<drone::Drone>, // a list of drones TODO: make it be a Drone object
     drone_idx: usize // the index of the selected drone
 }
 
@@ -34,7 +34,7 @@ impl Default for MyApp {
             run: false,
             run_all: false,
             pass_errors: false,
-            drones: vec!["TELLO-EE0CFE".to_string(),"RMTT-0ACB4".to_string()],
+            drones: vec![],
             drone_idx: 0
         }
     }
@@ -76,7 +76,7 @@ impl eframe::App for MyApp {
                     for (idx, drone) in self.drones.iter().enumerate() {
                         ui.horizontal(|ui|{
                             ui.label(idx.to_string());
-                            ui.selectable_value(&mut self.drone_idx, idx, drone);
+                            ui.selectable_value(&mut self.drone_idx, idx, drone.id.clone());
                         });
                     }
                 });
@@ -92,11 +92,11 @@ impl eframe::App for MyApp {
         if self.run_all {
             println!("running:\n{}\non: all",self.code);
             for command in self.code.split('\n') {
-                //Break early if line is none or empty
+                //Break early if line is none or empty or comment
                 if command.starts_with('#') || command.is_empty() || command  == "\n" {
                     continue
                 }
-                
+                // delay command which is not a SDK command
                 if command.starts_with("delay") {
                     if let Some(num) = command.split(' ').nth(2){
                         let n = num.to_string().parse::<usize>();
@@ -105,14 +105,26 @@ impl eframe::App for MyApp {
                     } else {std::thread::sleep(Duration::from_secs(1))}
                 }
 
-                if command.contains('@') {
-                    
-                }
+                let is_blocking = command.contains('@');
 
                 if command.contains('>') {
-                    1
+                    let split: Vec<&str> = command.splitn(2,'>').collect();
+                    let num = split[0].parse::<usize>().unwrap();
+                    let comma: String = split[1].chars().filter(|x|x.is_alphanumeric()).collect();
+                    if num < self.drones.len(){
+                        self.drones[num].add_command(drone::SdkCommand{
+                            cmd: comma,
+                            blocking: is_blocking
+                        });
+                    };
                 } else {
-                    0
+                    let comma: String = command.chars().filter(|x|x.is_alphanumeric()).collect();
+                    for drone in self.drones.iter() {
+                        drone.add_command(drone::SdkCommand{
+                            cmd: comma.clone(),
+                            blocking: is_blocking
+                        });
+                    };
                 };
 
             }

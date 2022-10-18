@@ -7,11 +7,13 @@ use tokio::{net::UdpSocket, task::JoinHandle, sync::Mutex};
 pub const ACKED: &[&str] = &[];
 
 pub struct SdkCommand {
-	cmd: String, // the formatted command to run for the drone
-	locking: bool //whether or not this command can be "locking" which means you can wait for *all* drones to finish their last locking command
+	pub cmd: String, // the formatted command to run for the drone
+	pub blocking: bool //whether or not this command can be "locking" which means you can wait for *all* drones to finish their last locking command
 }
 
+
 pub struct Drone {
+	pub id: String,
 	queue: Arc<Mutex<VecDeque<SdkCommand>>>,
 	drn_ack: Arc<AtomicBool>,
 	command_sock: Arc<UdpSocket>,
@@ -22,7 +24,7 @@ pub struct Drone {
 }
 
 impl Drone {
-	async fn connect(addr: &str) -> Drone {
+	pub async fn connect(addr: &str) -> Drone {
 		let response = Arc::new(Mutex::new(String::new()));
 		let acked = Arc::new(AtomicBool::new(false));
 		let udp_socket = Arc::new(UdpSocket::bind(addr).await.unwrap());
@@ -61,6 +63,7 @@ impl Drone {
 		});
 
 		Drone {
+			id: addr.to_string(),
 			queue: command_queue,
 			drn_ack: acked.clone(),
 			command_thread: command_thread,
@@ -70,8 +73,8 @@ impl Drone {
 			send_thread: send_thread
 		}
 	}
-	async fn add_command(self,cmd: SdkCommand) {
-		if cmd.locking {
+	pub async fn add_command(&self,cmd: SdkCommand) {
+		if cmd.blocking {
 			let t = self.block_counter.load(Ordering::Relaxed);
 			self.block_counter.store(t+1,Ordering::Relaxed);
 		}
