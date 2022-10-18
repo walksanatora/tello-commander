@@ -81,4 +81,11 @@ impl Drone {
 		let mut queu = self.queue.lock().await;
 		queu.push_back(cmd);
 	}
+	pub fn await_blocks(&self) {
+		let mut wait_blocks = self.block_counter.load(Ordering::Relaxed);
+		while wait_blocks > 0 {
+			std::thread::sleep(Duration::from_millis(20));
+			wait_blocks = self.block_counter.load(Ordering::Relaxed);
+		}
+	}
 }

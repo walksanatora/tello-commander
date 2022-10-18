@@ -5,6 +5,7 @@ mod drone;
 
 use eframe::egui;
 use std::fs::{read_to_string,write};
+use futures::executor::block_on;
 use std::time::Duration;
 use rfd::FileDialog;
 
@@ -103,21 +104,28 @@ impl eframe::App for MyApp {
                         if let Ok(nm) = n {std::thread::sleep(Duration::from_secs(nm as u64))}
                         else {std::thread::sleep(Duration::from_secs(1))};
                     } else {std::thread::sleep(Duration::from_secs(1))}
+                    continue
+                } else if command.starts_with("await") {
+                    for drone in self.drones.iter() {
+                        drone.await_blocks();
+                    }
                 }
 
                 let is_blocking = command.contains('@');
 
                 if command.contains('>') {
+                    // push command to one drones queue
                     let split: Vec<&str> = command.splitn(2,'>').collect();
                     let num = split[0].parse::<usize>().unwrap();
                     let comma: String = split[1].chars().filter(|x|x.is_alphanumeric()).collect();
                     if num < self.drones.len(){
-                        self.drones[num].add_command(drone::SdkCommand{
+                        block_on(self.drones[num].add_command(drone::SdkCommand{
                             cmd: comma,
                             blocking: is_blocking
-                        });
+                        }));
                     };
                 } else {
+                    // push commands to all drones queue
                     let comma: String = command.chars().filter(|x|x.is_alphanumeric()).collect();
                     for drone in self.drones.iter() {
                         drone.add_command(drone::SdkCommand{
