@@ -128,10 +128,10 @@ impl eframe::App for MyApp {
                     // push commands to all drones queue
                     let comma: String = command.chars().filter(|x|x.is_alphanumeric()).collect();
                     for drone in self.drones.iter() {
-                        drone.add_command(drone::SdkCommand{
+                        block_on(drone.add_command(drone::SdkCommand{
                             cmd: comma.clone(),
                             blocking: is_blocking
-                        });
+                        }));
                     };
                 };
 
