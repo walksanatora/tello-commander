@@ -116,7 +116,7 @@ impl eframe::App for MyApp {
                 if command.contains('>') {
                     // push command to one drones queue
                     let split: Vec<&str> = command.splitn(2,'>').collect();
-                    let num = split[0].parse::<usize>().unwrap();
+                    let num = split[0].chars().filter(|x|x.is_alphanumeric()).collect::<String>().parse::<usize>().unwrap();
                     let comma: String = split[1].chars().filter(|x|x.is_alphanumeric()).collect();
                     if num < self.drones.len(){
                         block_on(self.drones[num].add_command(drone::SdkCommand{
