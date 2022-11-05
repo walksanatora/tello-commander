@@ -1,8 +1,16 @@
-command
-takeoff
-delay 5
-land
-delay 10
-takeoff
-delay 7
+#put all drones into command mode and wait for them to takeoff
+@command
+await
+
+0>takeoff
+delay 1
+1>takeoff
+delay 1
+2>takeoff
+delay 3
+@forward 50
+@right 50
+@flip b
+await
+
 land
